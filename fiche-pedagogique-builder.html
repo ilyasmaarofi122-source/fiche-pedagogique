@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>باني الجذاذات التربوية / Générateur de fiches pédagogiques</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap');
+
+:root{
+  --paper:#faf6ee;
+  --ink:#241c15;
+  --maroon:#8f1d2c;
+  --maroon-dark:#6c1520;
+  --gold:#b6902f;
+  --line:#d8cdb8;
+  --panel:#ffffff;
+  --sidebar:#241c15;
+  --sidebar-ink:#efe6d4;
+  --muted:#8a7d68;
+  --ok:#4f7a52;
+  --danger:#a4372f;
+  --radius:10px;
+  --font-ui: 'Cairo','Inter',sans-serif;
+  --font-doc: 'Amiri','Lora',serif;
+}
+html[data-lang="fr"]{ --font-ui:'Inter',sans-serif; --font-doc:'Lora',serif; }
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(143,29,44,0.06) 1px, transparent 0) 0 0/22px 22px,
+    var(--paper);
+  color:var(--ink);
+  font-family:var(--font-ui);
+  min-height:100vh;
+}
+
+/* ---------- Layout ---------- */
+.app{ display:flex; min-height:100vh; }
+.sidebar{
+  width:280px; flex:0 0 280px;
+  background:var(--sidebar); color:var(--sidebar-ink);
+  padding:22px 18px; display:flex; flex-direction:column; gap:18px;
+}
+.main{ flex:1; min-width:0; padding:26px 30px 60px; }
+
+.brand{ display:flex; align-items:center; gap:12px; }
+.stamp{
+  width:52px;height:52px;border-radius:50%;
+  border:2.5px solid var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  transform:rotate(-8deg);
+  color:var(--gold); font-family:var(--font-doc); font-weight:700; font-size:11px;
+  text-align:center; line-height:1.1; flex:0 0 auto;
+  box-shadow: inset 0 0 0 1px rgba(182,144,47,0.35);
+}
+.brand h1{ font-size:15px; margin:0; font-weight:700; line-height:1.35;}
+.brand p{ margin:2px 0 0; font-size:11.5px; color:#c8bda3;}
+
+.lang-toggle{ display:flex; background:#382c20; border-radius:8px; padding:3px; gap:3px;}
+.lang-toggle button{
+  flex:1; border:none; background:transparent; color:#c8bda3; padding:8px 6px;
+  border-radius:6px; font-family:inherit; font-weight:600; font-size:13px; cursor:pointer;
+}
+.lang-toggle button.active{ background:var(--maroon); color:#fff; }
+
+.side-btn{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  background:var(--maroon); color:#fff; border:none; padding:11px 12px;
+  border-radius:8px; font-family:inherit; font-weight:600; font-size:13.5px; cursor:pointer;
+}
+.side-btn:hover{ background:var(--maroon-dark); }
+.side-btn.ghost{ background:transparent; border:1px solid #4a3c2c; color:var(--sidebar-ink); }
+.side-btn.ghost:hover{ background:#332819; }
+
+.fiche-list-label{ font-size:11.5px; text-transform:uppercase; letter-spacing:.06em; color:#a9987d; margin:4px 0 -6px;}
+.fiche-list{ display:flex; flex-direction:column; gap:6px; overflow-y:auto; max-height:38vh;}
+.fiche-item{
+  padding:9px 10px; border-radius:8px; cursor:pointer; border:1px solid transparent;
+  font-size:13px; line-height:1.3;
+}
+.fiche-item:hover{ background:#332819; }
+.fiche-item.active{ background:#3a2c1c; border-color:var(--gold); }
+.fiche-item .t{ font-weight:600; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.fiche-item .d{ font-size:10.5px; color:#a9987d; }
+
+.storage-note{ font-size:10.5px; color:#8a7c62; line-height:1.5; margin-top:auto; padding-top:10px; border-top:1px solid #3a2e20;}
+.backup-row{ display:flex; gap:8px; }
+.backup-row .side-btn{ font-size:11.5px; padding:9px 6px; line-height:1.3; }
+
+/* ---------- Top bar ---------- */
+.topbar{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:20px; flex-wrap:wrap;}
+.tabs{ display:flex; gap:6px; background:#efe6d4; padding:4px; border-radius:9px; }
+.tabs button{
+  border:none; background:transparent; padding:9px 20px; border-radius:6px; cursor:pointer;
+  font-family:inherit; font-weight:600; font-size:13.5px; color:var(--muted);
+}
+.tabs button.active{ background:var(--panel); color:var(--maroon); box-shadow:0 1px 2px rgba(0,0,0,0.08);}
+.actions{ display:flex; gap:10px; }
+.btn{
+  border:1px solid var(--line); background:var(--panel); padding:9px 16px; border-radius:8px;
+  font-family:inherit; font-weight:600; font-size:13.5px; cursor:pointer; color:var(--ink);
+}
+.btn.primary{ background:var(--maroon); border-color:var(--maroon); color:#fff; }
+.btn.primary:hover{ background:var(--maroon-dark); }
+.btn.danger{ color:var(--danger); border-color:#e3c3bf; }
+
+/* ---------- Editor ---------- */
+.editor{ display:flex; flex-direction:column; gap:18px; max-width:980px;}
+.card{ background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px;}
+.card h3{
+  margin:0 0 14px; font-size:13.5px; text-transform:uppercase; letter-spacing:.04em;
+  color:var(--maroon); border-bottom:2px solid var(--gold); padding-bottom:8px; display:inline-block;
+}
+.grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px 16px;}
+.grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px 16px;}
+.field label{ display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:5px;}
+.field input[type=text], .field textarea{
+  width:100%; border:1px solid var(--line); border-radius:7px; padding:9px 10px;
+  font-family:var(--font-ui); font-size:13.5px; color:var(--ink); background:#fffdf9; resize:vertical;
+}
+.field textarea{ min-height:44px; line-height:1.5;}
+.field.full{ grid-column:1 / -1; }
+
+.list-editor .item-row{ display:flex; gap:8px; margin-bottom:7px; align-items:flex-start;}
+.list-editor textarea{ flex:1; min-height:38px;}
+.icon-btn{
+  border:1px solid var(--line); background:#fff; width:32px; height:32px; border-radius:7px;
+  cursor:pointer; color:var(--danger); font-size:15px; flex:0 0 auto; line-height:1;
+}
+.add-link{
+  border:1px dashed var(--gold); background:#fdf8ee; color:var(--maroon); border-radius:7px;
+  padding:8px 12px; font-family:inherit; font-weight:600; font-size:12.5px; cursor:pointer; margin-top:2px;
+}
+
+.logo-row{ display:flex; align-items:center; gap:14px; }
+.logo-preview{
+  width:64px;height:64px;border:1px dashed var(--line); border-radius:8px; display:flex; align-items:center;
+  justify-content:center; overflow:hidden; background:#fff; flex:0 0 auto; font-size:10px; color:var(--muted); text-align:center;
+}
+.logo-preview img{ width:100%; height:100%; object-fit:contain; }
+
+/* rows table editor */
+.row-card{ border:1px solid var(--line); border-radius:9px; padding:14px 16px; background:#fffdf9; margin-bottom:10px; position:relative;}
+.row-card-phase{ background:#fbf1e4; border-color:var(--gold); }
+.row-card .row-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+.row-card .row-head input{ font-weight:700; font-size:14px; border:none; border-bottom:1.5px solid var(--gold); background:transparent; padding:3px 2px; width:100%;}
+.row-card-phase .row-head input{ color:var(--maroon); font-size:15px;}
+.row-tools{ display:flex; align-items:center; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+.row-tools select{ border:1px solid var(--line); border-radius:6px; padding:6px 8px; font-family:inherit; font-size:12px; background:#fff; color:var(--ink); margin-inline-end:auto;}
+.row-tools .icon-btn{ width:28px; height:28px; font-size:12px; color:var(--muted);}
+.row-tools .icon-btn:hover{ color:var(--maroon); border-color:var(--gold);}
+.row-tools .icon-btn:disabled{ opacity:.3; cursor:not-allowed;}
+.row-tools .icon-btn[data-act="del"]{ color:var(--danger); }
+.row-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px 14px;}
+.row-grid .field.full{ grid-column:1/-1;}
+
+/* ---------- Preview / printed sheet ---------- */
+.sheet-wrap{ display:flex; justify-content:center;}
+.sheet{
+  background:#fff; width:100%; max-width:1180px; padding:34px 40px 30px;
+  border:1px solid var(--line); box-shadow:0 10px 34px rgba(60,45,25,0.10);
+  font-family:var(--font-doc); color:#1c140f; position:relative;
+}
+.sheet::before{
+  content:''; position:absolute; inset:10px; border:1.5px solid var(--gold);
+  pointer-events:none;
+}
+.sheet-inner{ position:relative; }
+.sheet, .sheet *{ direction: inherit; }
+.doc-table{ width:100%; border-collapse:collapse; margin-bottom:0; }
+.doc-table td, .doc-table th{ border:1px solid #8a7b58; padding:9px 11px; vertical-align:top; font-size:13px; line-height:1.65;}
+.doc-header-table td{ vertical-align:middle; }
+.doc-title{ font-weight:700; font-size:14px; }
+.doc-label{ font-weight:700; font-size:12px; color:#5c4a2a; }
+.doc-label-lg{ font-weight:700; font-size:17px; color:var(--maroon-dark); font-family:var(--font-doc); display:block; margin-bottom:4px; }
+.crest-cell{ text-align:center; width:112px; }
+.crest{
+  width:66px;height:66px;border-radius:50%; border:2px solid var(--gold); margin:0 auto 7px;
+  display:flex; align-items:center; justify-content:center; color:var(--gold); font-size:9px; font-weight:700;
+  box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 4px rgba(182,144,47,0.4);
+  background: radial-gradient(circle at 50% 35%, #fffdf6, #faf3e2);
+}
+.crest img{ width:100%;height:100%;object-fit:contain;border-radius:50%;}
+.doc-tiny{ font-size:10.5px; line-height:1.5; color:#333; }
+.academy-line{
+  font-family:var(--font-doc); font-weight:700; font-size:16px; line-height:1.45;
+  color:var(--maroon-dark); text-align:center; padding:2px 4px 4px;
+}
+.section-title-bar{
+  background:linear-gradient(90deg, var(--maroon), var(--maroon-dark)); color:#fff; font-family:var(--font-ui); font-weight:700; font-size:12.5px;
+  padding:8px 14px; margin:18px 0 0; letter-spacing:.03em; border-inline-start:5px solid var(--gold);
+}
+.bullets{ margin:0; padding-inline-start:20px; }
+.bullets li{ margin-bottom:4px; }
+.big-table{ margin-top:0; }
+.big-table th{ background:#f4ecdb; font-family:var(--font-ui); font-size:11.5px; font-weight:700; color:#4a3a1e;}
+.big-table tbody tr.alt{ background:#fbf8f1; }
+.phase-row{ background:#f1e3c6 !important; font-family:var(--font-ui); font-weight:700; font-size:13px; color:var(--maroon-dark); text-align:start; }
+.subhead{ font-family:var(--font-ui); font-size:10.5px; font-weight:700; color:#7a6c4d; text-transform:uppercase; }
+.empty-hint{ color:#b3a688; font-style:italic; }
+.print-only{ display:none; }
+.doc-footer{
+  display:flex; justify-content:flex-end; gap:30px; margin-top:34px; padding-top:6px;
+}
+.sig-block{ flex:0 0 240px; text-align:center; font-family:var(--font-ui); font-size:11.5px; color:#5c4a2a; }
+.sig-line{ border-top:1px solid #8a7b58; margin-top:34px; padding-top:6px; }
+
+@media print{
+  body{ background:#fff !important; }
+  .sidebar, .topbar, .app > .main > .editor{ display:none !important; }
+  .main{ padding:0; }
+  .sheet-wrap{ display:block; }
+  .sheet{ box-shadow:none; border:none; max-width:100%; width:100%; padding:9mm 11mm; }
+  .sheet::before{ inset:4mm; border-color:#000 !important; }
+  .doc-table tr{ page-break-inside: avoid; }
+  @page{ size: A4 landscape; margin:8mm; }
+
+  /* Force solid black ink for print legibility — sizes untouched */
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  .sheet, .sheet *{
+    color:#000 !important;
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+  }
+  .sheet .doc-table td, .sheet .doc-table th{ border-color:#000 !important; }
+  .sheet .academy-line, .sheet .doc-title, .sheet .doc-label, .sheet .doc-label-lg,
+  .sheet .doc-tiny, .sheet .subhead, .sheet .empty-hint{ color:#000 !important; }
+  .sheet .crest{ border-color:#000 !important; background:#fff !important; box-shadow:none !important; }
+  .sheet .section-title-bar{ background:#fff !important; color:#000 !important; border:1.5px solid #000 !important; border-inline-start-width:5px !important; }
+  .sheet .big-table th{ background:#eee !important; }
+  .sheet .big-table tbody tr.alt{ background:#f5f5f5 !important; }
+  .sheet .phase-row{ background:#e6e6e6 !important; color:#000 !important; }
+  .sheet .sig-line{ border-top-color:#000 !important; }
+}
+
+@media (max-width:960px){
+  .sidebar{ display:none; }
+  .grid2, .grid3, .row-grid{ grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="stamp" id="stampText">جذاذة</div>
+      <div>
+        <h1 id="brandTitle">باني الجذاذات التربوية</h1>
+        <p id="brandSub">جذاذات بيداغوجية ثنائية اللغة</p>
+      </div>
+    </div>
+
+    <div class="lang-toggle">
+      <button id="btnLangAr" class="active">العربية</button>
+      <button id="btnLangFr">Français</button>
+    </div>
+
+    <button class="side-btn" id="btnNew">＋ <span id="lblNew">جذاذة جديدة</span></button>
+    <button class="side-btn ghost" id="btnDuplicate"><span id="lblDup">نسخ الجذاذة الحالية</span></button>
+
+    <div class="fiche-list-label" id="lblSaved">الجذاذات المحفوظة</div>
+    <div class="fiche-list" id="ficheList"></div>
+
+    <div class="backup-row">
+      <button class="side-btn ghost" id="btnExport"><span id="lblExport">تصدير نسخة احتياطية</span></button>
+      <label class="side-btn ghost" style="cursor:pointer;text-align:center;">
+        <span id="lblImport">استيراد نسخة احتياطية</span>
+        <input type="file" id="in_import" accept="application/json" style="display:none;">
+      </label>
+    </div>
+
+    <div class="storage-note" id="storageNote"></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="tabs">
+        <button id="tabEdit" class="active">تحرير</button>
+        <button id="tabPreview">معاينة</button>
+      </div>
+      <div class="actions">
+        <button class="btn danger" id="btnDelete">حذف</button>
+        <button class="btn primary" id="btnPrint">طباعة / تصدير PDF</button>
+      </div>
+    </div>
+
+    <section id="editorView" class="editor"></section>
+    <section id="previewView" class="sheet-wrap" style="display:none;"></section>
+  </main>
+</div>
+
+<script>
+/* =========================================================================
+   DATA / LABELS
+   ========================================================================= */
+const LABELS = {
+  ar: {
+    dir:'rtl', code:'ar',
+    brandTitle:'باني الجذاذات التربوية', brandSub:'جذاذات بيداغوجية ثنائية اللغة',
+    newFiche:'جذاذة جديدة', duplicate:'نسخ الجذاذة الحالية', saved:'الجذاذات المحفوظة',
+    edit:'تحرير', preview:'معاينة', print:'طباعة / تصدير PDF', del:'حذف',
+    confirmDelete:'هل تريد حذف هذه الجذاذة نهائيا؟', untitled:'جذاذة بدون عنوان',
+    noFiches:'لا توجد جذاذات محفوظة بعد.',
+    s_header:'الترويسة الرسمية', s_meta:'معطيات الدرس', s_comp:'الكفايات', s_lists:'الأهداف والمكتسبات',
+    s_situ:'وضعيات الانطلاق', s_table:'مسار الدرس (التصميم البيداغوجي)',
+    academyLine:'الأكاديمية الجهوية / المديرية', etabLine:'المؤسسة التعليمية',
+    tifinagh:'سطر أمازيغي (اختياري)', arabicHeaderLine:'سطر الترويسة بالعربية',
+    anneeScolaire:'السنة الدراسية', duree:'المدة الزمنية', prof:'الأستاذ',
+    section:'القسم', matiere:'المادة', unite:'عنوان الوحدة',
+    lecon:'عنوان الدرس', ficheNum:'جذادة رقم', ficheTitle:'عنوان الجذاذة (للحفظ)',
+    compMarhaliya:'الكفاية المرحلية', compUnite:'كفاية الوحدة',
+    objectifs:'الأهداف الخاصة للدرس', prerequis:'المكتسبات القبلية',
+    situationDepart:'وضعية الانطلاق', situationProbleme:'وضعية - مسألة (اختياري)',
+    col_step:'تصميم الدرس', col_obj:'الأهداف التعليمية', col_comp:'المهارات المستهدفة',
+    col_teacher:'أنشطة الأستاذ(ة)', col_learner:'أنشطة المتعلم(ة)', col_moyens:'الوسائل التعليمية', col_eval:'التقويم',
+    interactif:'الأنشطة التفاعلية',
+    addRow:'+ إضافة خطوة تفصيلية', addPhase:'+ إضافة عنوان مرحلة رئيسية', addItem:'+ إضافة عنصر', remove:'حذف',
+    moveUp:'▲ نقل لأعلى', moveDown:'▼ نقل لأسفل', duplicateRow:'⧉ تكرار',
+    rowType:'نوع السطر', typeStep:'خطوة تفصيلية', typePhase:'عنوان مرحلة رئيسية',
+    phasePlaceholder:'مثال: I. تقنيات دراسة الوسط الغابوي',
+    logo:'الشعار (اختياري)', uploadLogo:'تحميل صورة', removeLogo:'إزالة',
+    lastUpdated:'آخر تعديل', stepLabel:'المرحلة',
+    sigProf:'توقيع الأستاذ', sigAdmin:'تأشيرة الإدارة',
+  },
+  fr: {
+    dir:'ltr', code:'fr',
+    brandTitle:'Générateur de fiches pédagogiques', brandSub:'Fiches bilingues arabe / français',
+    newFiche:'Nouvelle fiche', duplicate:'Dupliquer la fiche', saved:'Fiches enregistrées',
+    edit:'Éditer', preview:'Aperçu', print:'Imprimer / Exporter en PDF', del:'Supprimer',
+    confirmDelete:'Supprimer définitivement cette fiche ?', untitled:'Fiche sans titre',
+    noFiches:'Aucune fiche enregistrée pour le moment.',
+    s_header:'En-tête officiel', s_meta:'Informations du cours', s_comp:'Compétences', s_lists:'Objectifs et prérequis',
+    s_situ:'Situations de départ', s_table:'Déroulement de la leçon (design pédagogique)',
+    academyLine:'Académie régionale / Direction', etabLine:'Établissement',
+    tifinagh:'Ligne amazighe (facultatif)', arabicHeaderLine:'Ligne d\'en-tête (arabe)',
+    anneeScolaire:'Année scolaire', duree:'Durée', prof:'Professeur',
+    section:'Classe', matiere:'Matière', unite:'Titre de l\'unité',
+    lecon:'Titre de la leçon', ficheNum:'Fiche n°', ficheTitle:'Titre de la fiche (pour l\'enregistrement)',
+    compMarhaliya:'Compétence de palier', compUnite:'Compétence de l\'unité',
+    objectifs:'Objectifs spécifiques de la leçon', prerequis:'Prérequis',
+    situationDepart:'Situation de départ', situationProbleme:'Situation-problème (facultatif)',
+    col_step:'Conception de la leçon', col_obj:'Objectifs pédagogiques', col_comp:'Compétences visées',
+    col_teacher:'Activités du professeur', col_learner:'Activités de l\'apprenant', col_moyens:'Moyens didactiques', col_eval:'Évaluation',
+    interactif:'Activités interactives',
+    addRow:'+ Ajouter une étape détaillée', addPhase:'+ Ajouter un titre de phase', addItem:'+ Ajouter un élément', remove:'Supprimer',
+    moveUp:'▲ Monter', moveDown:'▼ Descendre', duplicateRow:'⧉ Dupliquer',
+    rowType:'Type de ligne', typeStep:'Étape détaillée', typePhase:'Titre de phase principale',
+    phasePlaceholder:'Ex. : I. Techniques d\'étude du milieu forestier',
+    logo:'Logo (facultatif)', uploadLogo:'Charger une image', removeLogo:'Retirer',
+    lastUpdated:'Dernière modification', stepLabel:'Étape',
+    sigProf:'Signature du professeur', sigAdmin:'Visa de l\'administration',
+  }
+};
+
+function emptyFiche(lang){
+  return {
+    id: 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    lang: lang,
+    ficheTitle: '',
+    logo: null,
+    tifinagh: '',
+    headerLineAr: '',
+    academyLine: '', etabLine: '',
+    anneeScolaire: '2025/2026', duree: '', prof: '',
+    section: '', matiere: '', unite: '', lecon: '', ficheNum: '1',
+    compMarhaliya: '',
+    compUnite: '',
+    objectifs: [''],
+    prerequis: [''],
+    situationDepart: '',
+    situationProbleme: '',
+    rows: [ emptyRow() ],
+    updatedAt: Date.now()
+  };
+}
+function emptyRow(){
+  return { type:'step', step:'', objectifs:'', competences:'', teacher:'', learner:'', moyens:'', eval:'' };
+}
+function emptyPhase(){
+  return { type:'phase', step:'', objectifs:'', competences:'', teacher:'', learner:'', moyens:'', eval:'' };
+}
+
+/* =========================================================================
+   STATE + STORAGE
+   ========================================================================= */
+let state = {
+  lang: 'ar',
+  view: 'edit',
+  currentId: null,
+  fiches: {},      // id -> fiche
+  order: []        // list of ids, most recent first
+};
+
+const hasCloudStorage = (typeof window !== 'undefined' && !!window.storage);
+const hasLocalStorage = (function(){
+  try{ const k='__test__'; localStorage.setItem(k,'1'); localStorage.removeItem(k); return true; }catch(e){ return false; }
+})();
+const hasStorage = hasCloudStorage || hasLocalStorage;
+const LS_PREFIX = 'fiche-builder:';
+
+async function persistFiche(fiche){
+  if(hasCloudStorage){
+    try{ await window.storage.set('fiche:' + fiche.id, JSON.stringify(fiche)); }catch(e){ console.error('save error', e); }
+  } else if(hasLocalStorage){
+    try{ localStorage.setItem(LS_PREFIX + 'fiche:' + fiche.id, JSON.stringify(fiche)); }catch(e){ console.error('save error', e); }
+  } else return;
+  await persistIndex();
+}
+async function persistIndex(){
+  if(hasCloudStorage){
+    try{ await window.storage.set('fiches-index', JSON.stringify(state.order)); }catch(e){ console.error(e); }
+  } else if(hasLocalStorage){
+    try{ localStorage.setItem(LS_PREFIX + 'fiches-index', JSON.stringify(state.order)); }catch(e){ console.error(e); }
+  }
+}
+async function deleteFicheStorage(id){
+  if(hasCloudStorage){
+    try{ await window.storage.delete('fiche:' + id); }catch(e){}
+  } else if(hasLocalStorage){
+    try{ localStorage.removeItem(LS_PREFIX + 'fiche:' + id); }catch(e){}
+  }
+  await persistIndex();
+}
+async function loadAll(){
+  if(hasCloudStorage){
+    try{
+      const idx = await window.storage.get('fiches-index');
+      const order = idx ? JSON.parse(idx.value) : [];
+      for(const id of order){
+        try{
+          const r = await window.storage.get('fiche:' + id);
+          if(r){ state.fiches[id] = JSON.parse(r.value); state.order.push(id); }
+        }catch(e){ /* missing key, skip */ }
+      }
+    }catch(e){ console.error(e); }
+  } else if(hasLocalStorage){
+    try{
+      const raw = localStorage.getItem(LS_PREFIX + 'fiches-index');
+      const order = raw ? JSON.parse(raw) : [];
+      for(const id of order){
+        const raw2 = localStorage.getItem(LS_PREFIX + 'fiche:' + id);
+        if(raw2){ state.fiches[id] = JSON.parse(raw2); state.order.push(id); }
+      }
+    }catch(e){ console.error(e); }
+  }
+  if(state.order.length === 0){ seedFirstFiche(); }
+  else { state.currentId = state.order[0]; }
+}
+function seedFirstFiche(){
+  const f = emptyFiche('ar');
+  f.ficheTitle = 'جذاذة رقم 1 : بعض التقنيات الميدانية';
+  f.academyLine = 'الأكاديمية الجهوية للتربية والتكوين جهة فاس-مكناس — المديرية الاقليمية بولمان';
+  f.etabLine = 'الثانوية التأهيلية';
+  f.section = 'جدع مشترك علمي';
+  f.matiere = 'علوم الحياة والأرض';
+  f.unite = 'علم البيئة';
+  f.lecon = 'بعض التقنيات الميدانية';
+  f.duree = '6 ساعات';
+  f.compMarhaliya = 'تفسير كيفية تأثير مختلف العوامل البيئية على توزيع الكائنات الحية وطرق التحكم في هذه العوامل في الميدان الفلاحي لتحسين المردود الزراعي.';
+  f.compUnite = 'في نهاية الوحدة الأولى للجذع المشترك العلمي، وانطلاقا من أسناد ملائمة، يوظف المتعلم(ة) مكتسباته(ها) لحل وضعية مشكلة ذات دلالة متعلقة بعلم البيئة.';
+  f.objectifs = ['التعرف على الأنشطة الميدانية والتقنيات المعتمدة في دراسة وجرد الأنواع في وسط طبيعي', 'استخلاص مميزات التنبت', 'التعرف على تقنيات جمع وحفظ الكائنات النباتية والحيوانية (المعشبة نموذجا)', 'استخلاص تعريف للحميلة البيئية', 'إنجاز خطاطة تركيبية للدرس'];
+  f.prerequis = ['مكونات الأوساط الطبيعية وأنواعها', 'التغذية عند النباتات: الماء والأملاح المعدنية', 'استعمالات الخريطة الطبوغرافية', 'السلاسل والشبكات الغذائية', 'تصنيف الكائنات الحية'];
+  f.situationDepart = 'التعرف على الأوساط البيئية من خلال ملاحظة الوثيقة واستخراج مكوناتها.';
+  f.rows = [emptyRow()];
+  state.fiches[f.id] = f;
+  state.order = [f.id];
+  state.currentId = f.id;
+}
+
+/* =========================================================================
+   HELPERS
+   ========================================================================= */
+function L(){ return LABELS[state.lang]; }
+function current(){ return state.fiches[state.currentId]; }
+function touch(f){ f.updatedAt = Date.now(); persistFiche(f); }
+function escapeHtml(s){
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function nl2br(s){ return escapeHtml(s).replace(/\n/g,'<br>'); }
+
+/* =========================================================================
+   RENDER: chrome (sidebar / labels / tabs)
+   ========================================================================= */
+function renderChrome(){
+  const l = L();
+  document.documentElement.setAttribute('dir', l.dir);
+  document.documentElement.setAttribute('lang', l.code);
+  document.documentElement.setAttribute('data-lang', l.code);
+
+  document.getElementById('brandTitle').textContent = l.brandTitle;
+  document.getElementById('brandSub').textContent = l.brandSub;
+  document.getElementById('stampText').textContent = l.code === 'ar' ? 'جذاذة' : 'FICHE';
+  document.getElementById('lblNew').textContent = l.newFiche;
+  document.getElementById('lblDup').textContent = l.duplicate;
+  document.getElementById('lblSaved').textContent = l.saved;
+  document.getElementById('tabEdit').textContent = l.edit;
+  document.getElementById('tabPreview').textContent = l.preview;
+  document.getElementById('btnPrint').textContent = '⎙ ' + l.print;
+  document.getElementById('btnDelete').textContent = l.del;
+  document.getElementById('btnLangAr').classList.toggle('active', state.lang==='ar');
+  document.getElementById('btnLangFr').classList.toggle('active', state.lang==='fr');
+  document.getElementById('tabEdit').classList.toggle('active', state.view==='edit');
+  document.getElementById('tabPreview').classList.toggle('active', state.view==='preview');
+  document.getElementById('storageNote').textContent = hasStorage
+    ? (l.code==='ar' ? 'تُحفظ جذاذاتك تلقائيا في هذا المتصفح. استعمل "تصدير نسخة احتياطية" للاحتفاظ بها أو نقلها لجهاز آخر.' : 'Vos fiches sont enregistrées automatiquement dans ce navigateur. Utilisez « Exporter une sauvegarde » pour les conserver ou les transférer.')
+    : (l.code==='ar' ? 'تنبيه: التخزين الدائم غير متاح هنا؛ ستُفقد الجذاذات عند إعادة التحميل.' : 'Attention : l\'enregistrement persistant n\'est pas disponible ici ; les fiches seront perdues au rechargement.');
+
+  renderList();
+}
+
+function renderList(){
+  const l = L();
+  const box = document.getElementById('ficheList');
+  box.innerHTML = '';
+  if(state.order.length === 0){
+    box.innerHTML = `<div style="color:#8a7c62;font-size:12.5px;padding:6px 2px;">${l.noFiches}</div>`;
+    return;
+  }
+  const sorted = [...state.order].sort((a,b)=> (state.fiches[b]?.updatedAt||0) - (state.fiches[a]?.updatedAt||0));
+  sorted.forEach(id=>{
+    const f = state.fiches[id];
+    if(!f) return;
+    const div = document.createElement('div');
+    div.className = 'fiche-item' + (id === state.currentId ? ' active' : '');
+    const title = f.ficheTitle || f.lecon || l.untitled;
+    const date = new Date(f.updatedAt || Date.now());
+    div.innerHTML = `<span class="t">${escapeHtml(title)}</span><span class="d">${f.lang==='ar'?'AR':'FR'} · ${date.toLocaleDateString()}</span>`;
+    div.onclick = ()=>{ state.currentId = id; state.lang = f.lang; renderAll(); };
+    box.appendChild(div);
+  });
+}
+
+/* =========================================================================
+   RENDER: EDITOR
+   ========================================================================= */
+function field(labelText, valueHtmlInputAttrs){ /* not used directly, helper kept for clarity */ }
+
+function renderEditor(){
+  const l = L();
+  const f = current();
+  const box = document.getElementById('editorView');
+  if(!f){ box.innerHTML = ''; return; }
+
+  box.innerHTML = `
+    <div class="card">
+      <h3>${l.s_header}</h3>
+      <div class="grid2">
+        <div class="field full">
+          <label>${l.ficheTitle}</label>
+          <input type="text" id="in_ficheTitle" value="${escapeHtml(f.ficheTitle)}" placeholder="${l.ficheTitle}">
+        </div>
+        <div class="field">
+          <label>${l.tifinagh}</label>
+          <input type="text" id="in_tifinagh" value="${escapeHtml(f.tifinagh)}">
+        </div>
+        <div class="field">
+          <label>${l.arabicHeaderLine}</label>
+          <input type="text" id="in_headerLineAr" value="${escapeHtml(f.headerLineAr)}">
+        </div>
+        <div class="field full">
+          <label>${l.academyLine}</label>
+          <input type="text" id="in_academyLine" value="${escapeHtml(f.academyLine)}">
+        </div>
+        <div class="field full">
+          <label>${l.etabLine}</label>
+          <input type="text" id="in_etabLine" value="${escapeHtml(f.etabLine)}">
+        </div>
+      </div>
+      <div class="logo-row" style="margin-top:12px;">
+        <div class="logo-preview" id="logoPreview">${f.logo ? `<img src="${f.logo}">` : (l.logo)}</div>
+        <div style="display:flex;gap:8px;">
+          <label class="btn" style="cursor:pointer;">
+            ${l.uploadLogo}
+            <input type="file" id="in_logo" accept="image/*" style="display:none;">
+          </label>
+          ${f.logo ? `<button class="btn danger" id="btnRemoveLogo">${l.removeLogo}</button>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>${l.s_meta}</h3>
+      <div class="grid3">
+        <div class="field"><label>${l.anneeScolaire}</label><input type="text" id="in_anneeScolaire" value="${escapeHtml(f.anneeScolaire)}"></div>
+        <div class="field"><label>${l.duree}</label><input type="text" id="in_duree" value="${escapeHtml(f.duree)}"></div>
+        <div class="field"><label>${l.prof}</label><input type="text" id="in_prof" value="${escapeHtml(f.prof)}"></div>
+        <div class="field"><label>${l.section}</label><input type="text" id="in_section" value="${escapeHtml(f.section)}"></div>
+        <div class="field"><label>${l.matiere}</label><input type="text" id="in_matiere" value="${escapeHtml(f.matiere)}"></div>
+        <div class="field"><label>${l.ficheNum}</label><input type="text" id="in_ficheNum" value="${escapeHtml(f.ficheNum)}"></div>
+        <div class="field full"><label>${l.unite}</label><input type="text" id="in_unite" value="${escapeHtml(f.unite)}"></div>
+        <div class="field full"><label>${l.lecon}</label><input type="text" id="in_lecon" value="${escapeHtml(f.lecon)}"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>${l.s_comp}</h3>
+      <div class="field full">
+        <label>${l.compMarhaliya}</label>
+        <textarea id="in_compMarhaliya" rows="3">${escapeHtml(f.compMarhaliya)}</textarea>
+      </div>
+      <div class="field full" style="margin-top:10px;">
+        <label>${l.compUnite}</label>
+        <textarea id="in_compUnite" rows="3">${escapeHtml(f.compUnite)}</textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>${l.s_lists}</h3>
+      <div class="field full list-editor">
+        <label>${l.objectifs}</label>
+        <div id="listObjectifs"></div>
+        <button class="add-link" id="addObjectif">${l.addItem}</button>
+      </div>
+      <div class="field full list-editor" style="margin-top:14px;">
+        <label>${l.prerequis}</label>
+        <div id="listPrerequis"></div>
+        <button class="add-link" id="addPrerequis">${l.addItem}</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>${l.s_situ}</h3>
+      <div class="field full">
+        <label>${l.situationDepart}</label>
+        <textarea id="in_situationDepart" rows="2">${escapeHtml(f.situationDepart)}</textarea>
+      </div>
+      <div class="field full" style="margin-top:10px;">
+        <label>${l.situationProbleme}</label>
+        <textarea id="in_situationProbleme" rows="3">${escapeHtml(f.situationProbleme)}</textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>${l.s_table}</h3>
+      <div id="rowsBox"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="add-link" id="addRow">${l.addRow}</button>
+        <button class="add-link" id="addPhase" style="border-color:var(--maroon);color:var(--maroon);">${l.addPhase}</button>
+      </div>
+    </div>
+  `;
+
+  // bind simple text inputs
+  const bindText = (id, key)=>{
+    const el = document.getElementById(id);
+    el.addEventListener('input', ()=>{ f[key] = el.value; touch(f); refreshSidebarLabel(); });
+  };
+  ['ficheTitle','tifinagh','headerLineAr','academyLine','etabLine','anneeScolaire','duree','prof',
+   'section','matiere','ficheNum','unite','lecon','compMarhaliya','compUnite',
+   'situationDepart','situationProbleme'].forEach(key=> bindText('in_'+key, key));
+
+  // logo
+  document.getElementById('in_logo').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ f.logo = reader.result; touch(f); renderEditor(); if(state.view==='preview') renderPreview(); };
+    reader.readAsDataURL(file);
+  });
+  const removeLogoBtn = document.getElementById('btnRemoveLogo');
+  if(removeLogoBtn) removeLogoBtn.addEventListener('click', ()=>{ f.logo = null; touch(f); renderEditor(); if(state.view==='preview') renderPreview(); });
+
+  renderListEditor('listObjectifs', f.objectifs, (arr)=>{ f.objectifs = arr; touch(f); });
+  renderListEditor('listPrerequis', f.prerequis, (arr)=>{ f.prerequis = arr; touch(f); });
+  document.getElementById('addObjectif').onclick = ()=>{ f.objectifs.push(''); touch(f); renderEditor(); };
+  document.getElementById('addPrerequis').onclick = ()=>{ f.prerequis.push(''); touch(f); renderEditor(); };
+
+  renderRowsEditor();
+  document.getElementById('addRow').onclick = ()=>{ f.rows.push(emptyRow()); touch(f); renderRowsEditor(); if(state.view==='preview') renderPreview(); };
+  document.getElementById('addPhase').onclick = ()=>{ f.rows.push(emptyPhase()); touch(f); renderRowsEditor(); if(state.view==='preview') renderPreview(); };
+}
+
+function renderListEditor(containerId, arr, onChange){
+  const box = document.getElementById(containerId);
+  box.innerHTML = '';
+  arr.forEach((val, i)=>{
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML = `<textarea rows="1">${escapeHtml(val)}</textarea><button class="icon-btn" title="${L().remove}">✕</button>`;
+    const ta = row.querySelector('textarea');
+    ta.addEventListener('input', ()=>{ arr[i] = ta.value; onChange(arr); });
+    row.querySelector('button').addEventListener('click', ()=>{
+      arr.splice(i,1); onChange(arr); renderListEditor(containerId, arr, onChange); if(state.view==='preview') renderPreview();
+    });
+    box.appendChild(row);
+  });
+}
+
+function renderRowsEditor(){
+  const l = L();
+  const f = current();
+  const box = document.getElementById('rowsBox');
+  box.innerHTML = '';
+  f.rows.forEach((row, i)=>{
+    if(!row.type) row.type = 'step';
+    const isPhase = row.type === 'phase';
+    const div = document.createElement('div');
+    div.className = 'row-card' + (isPhase ? ' row-card-phase' : '');
+
+    const toolbar = `
+      <div class="row-tools">
+        <select class="row-type-select">
+          <option value="step" ${!isPhase?'selected':''}>${l.typeStep}</option>
+          <option value="phase" ${isPhase?'selected':''}>${l.typePhase}</option>
+        </select>
+        <button class="icon-btn tool" data-act="up" title="${l.moveUp}" ${i===0?'disabled':''}>▲</button>
+        <button class="icon-btn tool" data-act="down" title="${l.moveDown}" ${i===f.rows.length-1?'disabled':''}>▼</button>
+        <button class="icon-btn tool" data-act="dup" title="${l.duplicateRow}">⧉</button>
+        <button class="icon-btn" data-act="del" title="${l.remove}">✕</button>
+      </div>`;
+
+    div.innerHTML = isPhase ? `
+      <div class="row-head">
+        <input type="text" class="in-step" value="${escapeHtml(row.step)}" placeholder="${l.phasePlaceholder}">
+      </div>
+      ${toolbar}
+    ` : `
+      <div class="field full" style="margin-bottom:8px;">
+        <label>${l.col_step}</label>
+        <textarea class="in-step" rows="2" placeholder="${l.stepLabel} ${i+1}">${escapeHtml(row.step)}</textarea>
+      </div>
+      ${toolbar}
+      <div class="row-grid">
+        <div class="field"><label>${l.col_obj}</label><textarea class="in-objectifs" rows="2">${escapeHtml(row.objectifs)}</textarea></div>
+        <div class="field"><label>${l.col_comp}</label><textarea class="in-competences" rows="2">${escapeHtml(row.competences)}</textarea></div>
+        <div class="field"><label>${l.col_teacher}</label><textarea class="in-teacher" rows="2">${escapeHtml(row.teacher)}</textarea></div>
+        <div class="field"><label>${l.col_learner}</label><textarea class="in-learner" rows="2">${escapeHtml(row.learner)}</textarea></div>
+        <div class="field"><label>${l.col_moyens}</label><textarea class="in-moyens" rows="2">${escapeHtml(row.moyens)}</textarea></div>
+        <div class="field"><label>${l.col_eval}</label><textarea class="in-eval" rows="2">${escapeHtml(row.eval)}</textarea></div>
+      </div>
+    `;
+
+    div.querySelector('.in-step').addEventListener('input', (e)=>{ row.step = e.target.value; touch(f); if(state.view==='preview') renderPreview(); });
+    ['objectifs','competences','teacher','learner','moyens','eval'].forEach(key=>{
+      const el = div.querySelector('.in-'+key);
+      if(el) el.addEventListener('input', ()=>{ row[key] = el.value; touch(f); if(state.view==='preview') renderPreview(); });
+    });
+
+    div.querySelector('.row-type-select').addEventListener('change', (e)=>{
+      row.type = e.target.value; touch(f); renderRowsEditor(); if(state.view==='preview') renderPreview();
+    });
+    div.querySelectorAll('.tool, [data-act="del"]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const act = btn.dataset.act;
+        if(act === 'up' && i > 0){ [f.rows[i-1], f.rows[i]] = [f.rows[i], f.rows[i-1]]; }
+        else if(act === 'down' && i < f.rows.length-1){ [f.rows[i+1], f.rows[i]] = [f.rows[i], f.rows[i+1]]; }
+        else if(act === 'dup'){ f.rows.splice(i+1, 0, JSON.parse(JSON.stringify(row))); }
+        else if(act === 'del'){ f.rows.splice(i,1); }
+        touch(f); renderRowsEditor(); if(state.view==='preview') renderPreview();
+      });
+    });
+
+    box.appendChild(div);
+  });
+}
+
+function refreshSidebarLabel(){ renderList(); }
+
+/* =========================================================================
+   RENDER: PREVIEW (this is also the printed document)
+   ========================================================================= */
+function renderPreview(){
+  const l = L();
+  const f = current();
+  const box = document.getElementById('previewView');
+  if(!f){ box.innerHTML=''; return; }
+
+  const bulletsHtml = (arr)=> {
+    const items = arr.filter(x => x && x.trim() !== '');
+    if(items.length === 0) return `<span class="empty-hint">—</span>`;
+    return `<ul class="bullets">${items.map(x=>`<li>${nl2br(x)}</li>`).join('')}</ul>`;
+  };
+
+  let stepCounter = 0;
+  const rowsHtml = f.rows.map((r)=>{
+    if(r.type === 'phase'){
+      return `<tr><td colspan="7" class="phase-row">${escapeHtml(r.step) || '&nbsp;'}</td></tr>`;
+    }
+    stepCounter++;
+    return `
+    <tr class="step-row${stepCounter % 2 === 0 ? ' alt' : ''}">
+      <td style="font-weight:700;">${nl2br(r.step) || (l.stepLabel+' '+stepCounter)}</td>
+      <td>${nl2br(r.objectifs)}</td>
+      <td>${nl2br(r.competences)}</td>
+      <td>${nl2br(r.teacher)}</td>
+      <td>${nl2br(r.learner)}</td>
+      <td>${nl2br(r.moyens)}</td>
+      <td>${nl2br(r.eval)}</td>
+    </tr>`;
+  }).join('');
+
+  box.innerHTML = `
+  <div class="sheet" dir="${l.dir}">
+  <div class="sheet-inner">
+    <table class="doc-table doc-header-table">
+      <tr>
+        <td class="crest-cell" rowspan="3">
+          <div class="crest">${f.logo ? `<img src="${f.logo}">` : (l.code==='ar' ? 'شعار' : 'LOGO')}</div>
+          <div class="doc-tiny">${escapeHtml(f.tifinagh)}</div>
+          <div class="doc-tiny">${escapeHtml(f.headerLineAr)}</div>
+        </td>
+        <td>
+          <div class="academy-line">${escapeHtml(f.academyLine)}</div>
+          <div class="doc-tiny" style="text-align:center;">${escapeHtml(f.etabLine)}</div>
+        </td>
+        <td>
+          <span class="doc-label">${l.anneeScolaire} :</span> ${escapeHtml(f.anneeScolaire)}<br>
+          <span class="doc-label">${l.duree} :</span> ${escapeHtml(f.duree)}<br>
+          <span class="doc-label">${l.prof} :</span> ${escapeHtml(f.prof)}
+        </td>
+      </tr>
+      <tr>
+        <td><span class="doc-label">${l.section} :</span> ${escapeHtml(f.section)}<br><span class="doc-label">${l.matiere} :</span> ${escapeHtml(f.matiere)}</td>
+        <td><span class="doc-label">${l.unite} :</span> ${escapeHtml(f.unite)}</td>
+      </tr>
+      <tr>
+        <td><span class="doc-label">${l.lecon} :</span> <span class="doc-title">${escapeHtml(f.lecon)}</span></td>
+        <td><span class="doc-label">${l.ficheNum} :</span> ${escapeHtml(f.ficheNum)}</td>
+      </tr>
+    </table>
+
+    <table class="doc-table" style="margin-top:0;">
+      <tr>
+        <td style="width:50%;"><span class="doc-label-lg">${l.compMarhaliya} :</span>${nl2br(f.compMarhaliya) || '<span class="empty-hint">—</span>'}</td>
+        <td><span class="doc-label-lg">${l.compUnite} :</span>${nl2br(f.compUnite) || '<span class="empty-hint">—</span>'}</td>
+      </tr>
+      <tr>
+        <td><span class="doc-label-lg">${l.objectifs} :</span>${bulletsHtml(f.objectifs)}</td>
+        <td><span class="doc-label-lg">${l.prerequis} :</span>${bulletsHtml(f.prerequis)}</td>
+      </tr>
+    </table>
+
+    ${f.situationDepart || f.situationProbleme ? `
+    <table class="doc-table" style="margin-top:0;">
+      <tr>
+        <td><span class="doc-label">${l.situationDepart} : </span>${nl2br(f.situationDepart) || '<span class="empty-hint">—</span>'}</td>
+      </tr>
+      ${f.situationProbleme ? `<tr><td><span class="doc-label">${l.situationProbleme} : </span>${nl2br(f.situationProbleme)}</td></tr>` : ''}
+    </table>` : ''}
+
+    <div class="section-title-bar">${l.s_table}</div>
+    <table class="doc-table big-table">
+      <tr>
+        <th>${l.col_step}</th>
+        <th>${l.col_obj}</th>
+        <th>${l.col_comp}</th>
+        <th colspan="2">${l.interactif}<br><span class="subhead">${l.col_teacher} / ${l.col_learner}</span></th>
+        <th>${l.col_moyens}</th>
+        <th>${l.col_eval}</th>
+      </tr>
+      ${rowsHtml}
+    </table>
+
+    <div class="doc-footer">
+      <div class="sig-block"><div class="sig-line">${l.sigProf}</div></div>
+    </div>
+  </div>
+  </div>`;
+}
+
+/* =========================================================================
+   TOP LEVEL ACTIONS
+   ========================================================================= */
+function renderAll(){
+  renderChrome();
+  renderEditor();
+  renderPreview();
+  document.getElementById('editorView').style.display = state.view==='edit' ? 'flex' : 'none';
+  document.getElementById('previewView').style.display = state.view==='preview' ? 'flex' : 'none';
+}
+
+document.getElementById('btnLangAr').onclick = ()=>{ state.lang='ar'; const f=current(); if(f){ f.lang='ar'; touch(f);} renderAll(); };
+document.getElementById('btnLangFr').onclick = ()=>{ state.lang='fr'; const f=current(); if(f){ f.lang='fr'; touch(f);} renderAll(); };
+document.getElementById('tabEdit').onclick = ()=>{ state.view='edit'; renderAll(); };
+document.getElementById('tabPreview').onclick = ()=>{ state.view='preview'; renderAll(); };
+document.getElementById('btnPrint').onclick = ()=>{ state.view='preview'; renderAll(); setTimeout(()=>window.print(), 80); };
+
+document.getElementById('btnNew').onclick = ()=>{
+  const f = emptyFiche(state.lang);
+  state.fiches[f.id] = f;
+  state.order.unshift(f.id);
+  state.currentId = f.id;
+  persistFiche(f); persistIndex();
+  state.view = 'edit';
+  renderAll();
+};
+
+document.getElementById('btnDuplicate').onclick = ()=>{
+  const src = current();
+  if(!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = 'f_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  copy.ficheTitle = (copy.ficheTitle || L().untitled) + ' (2)';
+  copy.updatedAt = Date.now();
+  state.fiches[copy.id] = copy;
+  state.order.unshift(copy.id);
+  state.currentId = copy.id;
+  persistFiche(copy); persistIndex();
+  renderAll();
+};
+
+document.getElementById('btnDelete').onclick = async ()=>{
+  const f = current();
+  if(!f) return;
+  if(!confirm(L().confirmDelete)) return;
+  await deleteFicheStorage(f.id);
+  delete state.fiches[f.id];
+  state.order = state.order.filter(id=>id!==f.id);
+  state.currentId = state.order[0] || null;
+  if(!state.currentId){
+    const nf = emptyFiche(state.lang);
+    state.fiches[nf.id] = nf; state.order = [nf.id]; state.currentId = nf.id;
+    persistFiche(nf); persistIndex();
+  }
+  renderAll();
+};
+
+/* =========================================================================
+   BOOT
+   ========================================================================= */
+(async function init(){
+  await loadAll();
+  const f = current();
+  if(f) state.lang = f.lang || 'ar';
+  renderAll();
+})();
+</script>
+</body>
+</html>
